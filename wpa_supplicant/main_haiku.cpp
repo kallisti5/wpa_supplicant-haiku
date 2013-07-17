@@ -460,7 +460,7 @@ WPASupplicantApp::_JoinNetwork(BMessage *message)
 		return status;
 
 	uint32 encapMode = B_NETWORK_ENCAP_NONE;
-	if (authMode == B_NETWORK_AUTHENTICATION_802_1X)
+	if (authMode == B_NETWORK_AUTHENTICATION_EAP)
 		message->FindUInt32("encapsulation", &encapMode);
 
 	const char *username = NULL;
@@ -502,10 +502,16 @@ WPASupplicantApp::_JoinNetwork(BMessage *message)
 		if (result == 0)
 			result = wpa_config_set(network, "proto", "WPA RSN", 2);
 		if (result == 0) {
-			if (authMode == B_NETWORK_AUTHENTICATION_802_1X)
-				result = wpa_config_set(network, "key_mgmt", "WPA-EAP", 3);
-			else
-				result = wpa_config_set(network, "key_mgmt", "WPA-PSK", 3);
+			switch (authMode) {
+				case B_NETWORK_AUTHENTICATION_WPA:
+				case B_NETWORK_AUTHENTICATION_WPA2:
+				default:
+					result = wpa_config_set(network, "key_mgmt", "WPA-PSK", 3);
+					break;
+				case B_NETWORK_AUTHENTICATION_EAP:
+					result = wpa_config_set(network, "key_mgmt", "WPA-EAP", 3);
+					break;
+			}
 		}
 		if (result == 0)
 			result = wpa_config_set(network, "pairwise", "CCMP TKIP NONE", 4);
@@ -546,7 +552,7 @@ WPASupplicantApp::_JoinNetwork(BMessage *message)
 
 			if (result == 0)
 				result = wpa_config_set(network, "wep_tx_keyidx", "0", 9);
-		} else if (authMode == B_NETWORK_AUTHENTICATION_802_1X) {
+		} else if (authMode == B_NETWORK_AUTHENTICATION_EAP) {
 			// EAP
 			value = "\"";
 			value += password;
