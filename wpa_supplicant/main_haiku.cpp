@@ -459,6 +459,17 @@ WPASupplicantApp::_JoinNetwork(BMessage *message)
 	if (status != B_OK)
 		return status;
 
+	uint32 encapMode = B_NETWORK_ENCAP_NONE;
+	if (authMode == B_NETWORK_AUTHENTICATION_802_1X)
+		message->FindUInt32("encapsulation", &encapMode);
+
+	const char *username = NULL;
+	if (encapMode > B_NETWORK_ENCAP_NONE) {
+		status = message->FindString("username", &username);
+		if (status != B_OK)
+			return status;
+	}
+
 	const char *password = NULL;
 	if (authMode > B_NETWORK_AUTHENTICATION_NONE) {
 		status = message->FindString("password", &password);
@@ -490,13 +501,29 @@ WPASupplicantApp::_JoinNetwork(BMessage *message)
 	if (authMode >= B_NETWORK_AUTHENTICATION_WPA) {
 		if (result == 0)
 			result = wpa_config_set(network, "proto", "WPA RSN", 2);
-		if (result == 0)
-			result = wpa_config_set(network, "key_mgmt", "WPA-PSK", 3);
+		if (result == 0) {
+			if (authMode == B_NETWORK_AUTHENTICATION_802_1X)
+				result = wpa_config_set(network, "key_mgmt", "WPA-EAP", 3);
+			else
+				result = wpa_config_set(network, "key_mgmt", "WPA-PSK", 3);
+		}
 		if (result == 0)
 			result = wpa_config_set(network, "pairwise", "CCMP TKIP NONE", 4);
 		if (result == 0) {
 			result = wpa_config_set(network, "group",
 				"CCMP TKIP WEP104 WEP40", 5);
+		}
+		if (result == 0) {
+			if (encapMode > B_NETWORK_ENCAP_NONE) {
+				switch (encapMode) {
+					case B_NETWORK_ENCAP_PEAP:
+						result = wpa_config_set(network, "eap", "PEAP", 6);
+						break;
+					case B_NETWORK_ENCAP_TLS:
+						result = wpa_config_set(network, "eap", "TLS", 6);
+						break;
+				}
+			}
 		}
 	} else {
 		// Open or WEP.
@@ -519,6 +546,26 @@ WPASupplicantApp::_JoinNetwork(BMessage *message)
 
 			if (result == 0)
 				result = wpa_config_set(network, "wep_tx_keyidx", "0", 9);
+		} else if (authMode == B_NETWORK_AUTHENTICATION_802_1X) {
+			// EAP
+			value = "\"";
+			value += password;
+			value += "\"";
+			result = wpa_config_set(network, "password", value.String(), 10);
+			if (encapMode > B_NETWORK_ENCAP_NONE) {
+				value = "\"";
+				value += username;
+				value += "\"";
+				result = wpa_config_set(network, "identity",
+					value.String(), 11);
+			}
+			// TODO: Does EAP need the same thing?
+			#if 0
+			if (result == 0) {
+				// We need to actually "apply" the PSK
+				wpa_config_update_psk(network);
+			}
+			#endif
 		} else if (authMode >= B_NETWORK_AUTHENTICATION_WPA) {
 			// WPA/WPA2
 			value = "\"";
