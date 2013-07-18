@@ -459,12 +459,12 @@ WPASupplicantApp::_JoinNetwork(BMessage *message)
 	if (status != B_OK)
 		return status;
 
-	uint32 encapMode = B_NETWORK_ENCAP_NONE;
+	uint32 encapMode = B_NETWORK_EAP_ENCAPSULATION_NONE;
 	if (authMode == B_NETWORK_AUTHENTICATION_EAP)
 		message->FindUInt32("encapsulation", &encapMode);
 
 	const char *username = NULL;
-	if (encapMode > B_NETWORK_ENCAP_NONE) {
+	if (encapMode > B_NETWORK_EAP_ENCAPSULATION_NONE) {
 		status = message->FindString("username", &username);
 		if (status != B_OK)
 			return status;
@@ -520,12 +520,12 @@ WPASupplicantApp::_JoinNetwork(BMessage *message)
 				"CCMP TKIP WEP104 WEP40", 5);
 		}
 		if (result == 0) {
-			if (encapMode > B_NETWORK_ENCAP_NONE) {
+			if (encapMode > B_NETWORK_EAP_ENCAPSULATION_NONE) {
 				switch (encapMode) {
-					case B_NETWORK_ENCAP_PEAP:
+					case B_NETWORK_EAP_ENCAPSULATION_PEAP:
 						result = wpa_config_set(network, "eap", "PEAP", 6);
 						break;
-					case B_NETWORK_ENCAP_TLS:
+					case B_NETWORK_EAP_ENCAPSULATION_TLS:
 						result = wpa_config_set(network, "eap", "TLS", 6);
 						break;
 				}
@@ -558,7 +558,7 @@ WPASupplicantApp::_JoinNetwork(BMessage *message)
 			value += password;
 			value += "\"";
 			result = wpa_config_set(network, "password", value.String(), 10);
-			if (encapMode > B_NETWORK_ENCAP_NONE) {
+			if (encapMode > B_NETWORK_EAP_ENCAPSULATION_NONE) {
 				value = "\"";
 				value += username;
 				value += "\"";
